@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0b1017" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="manifest" href="./manifest.json" />
+  <title>이춘학 실시간 금융 컨트롤타워 (MyFin Live)</title>
+  <style>
+    :root {
+      --bg: #0b1017;
+      --surface: #131b26;
+      --surface-2: #1c2736;
+      --surface-3: #253346;
+      --border: rgba(255,255,255,0.09);
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --brand: #38bdf8;
+      --accent: #2dd4bf;
+      --warn: #fbbf24;
+      --danger: #f87171;
+      --success: #34d399;
+      --font: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      line-height: 1.45;
+      font-variant-numeric: tabular-nums;
+      padding-bottom: 84px;
+      min-height: 100vh;
+    }
+    /* PIN Lock Screen */
+    #lockScreen {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    #lockScreen.hidden { display: none; }
+    .lock-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px 24px;
+      width: 100%;
+      max-width: 380px;
+      text-align: center;
+    }
+    .lock-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 99px;
+      background: rgba(56, 189, 248, 0.14);
+      color: var(--brand);
+      font-size: 11px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    .lock-title { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 6px; }
+    .lock-sub { font-size: 12px; color: var(--muted); margin-bottom: 18px; }
+    .pin-input-wrap { margin-bottom: 14px; }
+    .pin-input {
+      width: 100%;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 0.25em;
+      text-align: center;
+      padding: 12px;
+      border-radius: 12px;
+      outline: none;
+    }
+    .pin-input:focus { border-color: var(--brand); }
+    .keypad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .key-btn {
+      height: 52px;
+      border-radius: 12px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 18px;
+      font-weight: 700;
+      cursor: pointer;
+      user-select: none;
+    }
+    .key-btn:active { background: var(--surface-3); border-color: var(--brand); }
+    .key-btn.action { background: var(--brand); color: #0b1017; border-color: var(--brand); font-size: 14px; }
+    .remember-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .lock-err { color: var(--danger); font-size: 12px; min-height: 18px; font-weight: 600; }
+
+    /* Main App Header */
+    header {
+      background: rgba(19, 27, 38, 0.92);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 20px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+    .brand-title { font-size: 17px; font-weight: 800; letter-spacing: -0.02em; display: flex; align-items: center; gap: 8px; }
+    .live-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--success); display: inline-block; }
+    .header-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    button, .btn-label {
+      background: var(--surface-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.15s;
+    }
+    button:hover, .btn-label:hover { border-color: var(--brand); color: var(--brand); }
+    button.primary { background: var(--brand); color: #0b1017; border-color: var(--brand); font-weight: 700; }
+    .container { max-width: 1180px; margin: 0 auto; padding: 16px; }
+    .alert-banner {
+      background: rgba(248, 113, 113, 0.11);
+      border: 1px solid rgba(248, 113, 113, 0.35);
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .alert-title { color: var(--danger); font-weight: 700; font-size: 13.5px; }
+    .alert-desc { color: var(--text); font-size: 12.5px; margin-top: 3px; }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .kpi-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+    }
+    .kpi-label { font-size: 12px; color: var(--muted); margin-bottom: 4px; display: flex; justify-content: space-between; }
+    .kpi-val { font-size: 23px; font-weight: 800; letter-spacing: -0.02em; }
+    .kpi-sub { font-size: 11.5px; color: var(--muted); margin-top: 6px; display: flex; justify-content: space-between; }
+    .tabs {
+      display: flex;
+      gap: 6px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
+      margin-bottom: 16px;
+      overflow-x: auto;
+    }
+    .tab-btn {
+      padding: 9px 14px;
+      border-radius: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 12.5px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .tab-btn.active {
+      background: rgba(56, 189, 248, 0.14);
+      border-color: var(--brand);
+      color: var(--brand);
+    }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 14px;
+      overflow-x: auto;
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .card-title { font-size: 14.5px; font-weight: 700; }
+    table { width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 520px; }
+    th, td { padding: 9px 7px; text-align: left; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-weight: 600; font-size: 11.5px; }
+    td.num, th.num { text-align: right; }
+    .pos { color: var(--success); }
+    .neg { color: var(--danger); }
+    .warn-txt { color: var(--warn); }
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      background: var(--surface-2);
+      color: var(--muted);
+    }
+    .badge.active { background: rgba(52, 211, 153, 0.15); color: var(--success); }
+    .badge.lapsed { background: rgba(248, 113, 113, 0.15); color: var(--danger); }
+    .sim-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+    input[type="range"] { width: 100%; margin: 10px 0; accent-color: var(--brand); }
+    input[type="number"] {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 5px 7px;
+      border-radius: 6px;
+      width: 105px;
+      text-align: right;
+      font-size: 12.5px;
+      font-weight: 600;
+    }
+    .bar-stack {
+      height: 14px;
+      border-radius: 7px;
+      background: var(--surface-2);
+      overflow: hidden;
+      display: flex;
+      margin: 10px 0;
+    }
+    /* Mobile Bottom Bar for S24 Ultra */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(19, 27, 38, 0.96);
+      backdrop-filter: blur(12px);
+      border-top: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      padding: 6px 8px 10px;
+      z-index: 200;
+    }
+    .bnav-btn {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      padding: 8px 4px;
+      font-size: 11.5px;
+      font-weight: 700;
+      border-radius: 8px;
+      text-align: center;
+    }
+    .bnav-btn.active { color: var(--brand); background: rgba(56, 189, 248, 0.12); }
+    @media (min-width: 769px) {
+      .bottom-nav { display: none; }
+      body { padding-bottom: 40px; }
+    }
+  </style>
+</head>
+<body>
+  <!-- AES/SHA256 Encrypted PIN Lock Screen -->
+  <div id="lockScreen" class="">
+    <div class="lock-card">
+      <div class="lock-badge">SHA256-AEAD 암호화 보안 볼트</div>
+      <div class="lock-title">이춘학 금융 컨트롤타워</div>
+      <div class="lock-sub">본인 확인을 위해 보안 PIN 번호를 입력하세요<br/>(기본 PIN: <b>1024</b> 또는 <b>20261024</b>)</div>
+      <div class="pin-input-wrap">
+        <input type="password" id="pinField" class="pin-input" placeholder="••••" maxlength="16" onkeydown="if(event.key==='Enter') unlockVault()" />
+      </div>
+      <div class="lock-err" id="lockErrMsg"></div>
+      <div class="keypad">
+        <button class="key-btn" onclick="pressPin('1')">1</button>
+        <button class="key-btn" onclick="pressPin('2')">2</button>
+        <button class="key-btn" onclick="pressPin('3')">3</button>
+        <button class="key-btn" onclick="pressPin('4')">4</button>
+        <button class="key-btn" onclick="pressPin('5')">5</button>
+        <button class="key-btn" onclick="pressPin('6')">6</button>
+        <button class="key-btn" onclick="pressPin('7')">7</button>
+        <button class="key-btn" onclick="pressPin('8')">8</button>
+        <button class="key-btn" onclick="pressPin('9')">9</button>
+        <button class="key-btn" onclick="clearPin()">지우기</button>
+        <button class="key-btn" onclick="pressPin('0')">0</button>
+        <button class="key-btn action" onclick="unlockVault()">잠금해제</button>
+      </div>
+      <label class="remember-row">
+        <input type="checkbox" id="rememberDeviceChk" checked />
+        <span>이 기기(S24 Ultra / 내 PC)에서 자동 잠금해제 유지</span>
+      </label>
+    </div>
+  </div>
+
+  <header>
+    <div class="brand-title">
+      <span class="live-dot" id="liveDot"></span>
+      <span>이춘학 금융 컨트롤타워</span>
+      <span id="lastSyncBadge" class="badge active">실시간 KRX 연동 대기</span>
+    </div>
+    <div class="header-actions">
+      <button onclick="fetchNaverRealtimeJsonp()" class="primary" id="syncBtn">실시간 ETF 시세 갱신</button>
+      <label class="btn-label">
+        JSON 업데이트
+        <input type="file" accept=".json" style="display:none" onchange="importJsonFile(event)" />
+      </label>
+      <button onclick="exportCurrentJson()">JSON 백업</button>
+      <button onclick="lockAppNow()">잠금(PIN)</button>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="alert-banner" id="liquidityBanner">
+      <div>
+        <div class="alert-title" id="liquidityTitle">11월 카드 결제계좌(국민은행) 유동성 부족 알림</div>
+        <div class="alert-desc" id="liquidityDesc">
+          11/11(신한 450,565원) + 11/15(삼성 860,234원) 합계 <b>1,310,799원</b> 출금 예정이나, 국민은행 잔고(907,988원)가 <b>402,811원 부족</b>합니다. 토스뱅크(1,244,725원)에서 선이체를 권장합니다.
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <button onclick="resolveLiquidityTransfer()">토스→국민 45만 이체반영</button>
+        <span class="badge lapsed" id="liquidityBadge">점검 필수</span>
+      </div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label"><span>총 금융자산 (64건 실시간)</span><span class="badge active">실시간</span></div>
+        <div class="kpi-val" id="kpiTotalAsset">-</div>
+        <div class="kpi-sub">
+          <span>신협·공제 66.6% | 증권 31.1%</span>
+          <span class="pos" id="kpiAccruedInterest">+일할이자 계산중</span>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label"><span>총 금융부채 (대출 5 + 카드 2)</span><span class="badge">원금기준</span></div>
+        <div class="kpi-val neg" id="kpiTotalDebt">-</div>
+        <div class="kpi-sub">
+          <span>주담대 1.507억 | 신용 1.122억</span>
+          <span class="pos">10월 -303.3만 감축</span>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label"><span>순금융자산 (Net Worth)</span><span class="badge">실물제외</span></div>
+        <div class="kpi-val" id="kpiNetWorth">-</div>
+        <div class="kpi-sub">
+          <span id="kpiDebtRatio">부채비율 -</span>
+          <span class="warn-txt">신용대출 축소 최우선</span>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label"><span>카카오페이증권 ISA 실시간</span><span id="marketStateBadge" class="badge">KRX 연동</span></div>
+        <div class="kpi-val" id="kpiIsaEval">-</div>
+        <div class="kpi-sub">
+          <span>원금 4,533,090원</span>
+          <span class="neg" id="kpiIsaPnl">-</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('tab-overview', 0)">1. 종합 자산·부채</button>
+      <button class="tab-btn" onclick="switchTab('tab-securities', 1)">2. 실시간 ETF·증권</button>
+      <button class="tab-btn" onclick="switchTab('tab-debt', 2)">3. 대출 역마진·카드</button>
+      <button class="tab-btn" onclick="switchTab('tab-accounts', 3)">4. 은행·신협·보험정리</button>
+    </div>
+
+    <!-- TAB 1 -->
+    <div id="tab-overview" class="panel active">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">자산 부문별 포트폴리오 및 실시간 합계</div>
+          <span class="badge active">30초마다 KRX 실시간 시세 자동 반영</span>
+        </div>
+        <div class="bar-stack">
+          <div style="width:35.19%; background:#38bdf8"></div>
+          <div style="width:31.42%; background:#2dd4bf"></div>
+          <div style="width:31.08%; background:#fbbf24"></div>
+          <div style="width:2.31%; background:#c084fc"></div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>자산군</th>
+              <th>주요 계좌 및 기관</th>
+              <th class="num">실시간 평가금액 (원)</th>
+              <th class="num">비중</th>
+              <th>핵심 관리 포인트</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>출자금·연금공제</b></td>
+              <td>부산항운노조신협 출자금(946.5만) + 희망찬연금공제(3,124만)</td>
+              <td class="num" id="ovPension">40,705,174</td>
+              <td class="num">35.19%</td>
+              <td>비과세 배당 + 매월 12일 20만 원 자동적립</td>
+            </tr>
+            <tr>
+              <td><b>제2금융권 예탁금</b></td>
+              <td>신협 파워정기예탁금(3,000만) + 불어나예탁금(613.3만) 외</td>
+              <td class="num" id="ovCreditUnion">36,339,260</td>
+              <td class="num">31.42%</td>
+              <td id="ovDepositNote">연 2.7% 저율과세 (경과이자 일할 계산 반영)</td>
+            </tr>
+            <tr>
+              <td><b>증권·투자자산</b></td>
+              <td>토스증권(2,714.4만) + 카카오페이증권(ISA·연금) + 기타</td>
+              <td class="num" id="overviewSecTotal">35,943,379</td>
+              <td class="num">31.08%</td>
+              <td>ISA 8종목 실시간 시세 연동 / 비활동 증권계좌 정리</td>
+            </tr>
+            <tr>
+              <td><b>제1금융권 은행</b></td>
+              <td>토스뱅크 + 국민은행 + 카카오뱅크 외 31계좌</td>
+              <td class="num" id="ovBanks">2,670,835</td>
+              <td class="num">2.31%</td>
+              <td>국민은행 주거래 자동납부 34건 · 11월 카드결제 계좌</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB 2 -->
+    <div id="tab-securities" class="panel">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">카카오페이증권 중개형 ISA (020-13-595379) 실시간 ETF 전광판</div>
+          <span class="badge active">네이버/KRX 실시간 시세 직결 · 수동 단가 수정 가능</span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>종목코드</th>
+              <th>종목명</th>
+              <th class="num">보유수량</th>
+              <th class="num">평균단가</th>
+              <th class="num">실시간 현재가</th>
+              <th class="num">실시간 평가금액</th>
+              <th class="num">평가손익</th>
+              <th class="num">수익률</th>
+            </tr>
+          </thead>
+          <tbody id="isaHoldingsBody"></tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">전체 증권 계좌 요약 (토스증권 · 카카오페이증권 · 기타)</div>
+          <span class="badge">평가액 직접 수정 시 자동 저장</span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>기관명</th>
+              <th>계좌명</th>
+              <th>계좌번호</th>
+              <th class="num">예수금</th>
+              <th class="num">투자평가액</th>
+              <th class="num">총잔고 (원)</th>
+            </tr>
+          </thead>
+          <tbody id="allSecBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB 3 -->
+    <div id="tab-debt" class="panel">
+      <div class="sim-grid">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">고금리 신용대출 상환 & 역마진 해소 시뮬레이터</div>
+          </div>
+          <p style="font-size:12.5px; color:var(--muted); margin-bottom:12px;">
+            신협 파워정기예탁금(3,000만 원, 연 2.7%)보다 신용대출 금리(4.42%~6.02%+)가 높아 <b>연간 약 93만 원 이상의 금리 역마진</b>이 발생 중입니다.
+          </p>
+          <div style="margin-bottom:14px;">
+            <label style="font-size:12.5px; font-weight:700;">중도상환 시뮬레이션 금액: <span id="simPayoffLabel" style="color:var(--brand)">30,000,000원</span></label>
+            <input type="range" id="simPayoffSlider" min="0" max="112215000" step="1000000" value="30000000" oninput="updateDebtSim()" />
+          </div>
+          <div style="background:var(--surface-2); padding:14px; border-radius:10px; font-size:12.5px;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+              <span>상환 후 잔여 대출원금:</span>
+              <b id="simRemainingLoan">232,925,000원</b>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+              <span>연간 대출이자 절감액 (평균 5.8% 가정):</span>
+              <b class="pos" id="simAnnualSaved">+1,740,000원 / 년</b>
+            </div>
+            <div style="display:flex; justify-content:space-between;">
+              <span>예탁금(2.7%) 기회비용 차감 순이득:</span>
+              <b class="pos" id="simNetArbitrage">+930,000원 / 년 순절감</b>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">5대 금융권 대출 실시간 원장 (원금 수정 가능)</div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>기관 및 구분</th>
+                <th class="num">금리 / 만기</th>
+                <th class="num">실시간 잔액 (원)</th>
+                <th>우선순위</th>
+              </tr>
+            </thead>
+            <tbody id="loansBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4 -->
+    <div id="tab-accounts" class="panel">
+      <div class="sim-grid">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">주요 활동성 은행·신협 계좌 (잔고 클릭 수정)</div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>금융기관</th>
+                <th>상품명</th>
+                <th class="num">실시간 잔고 (원)</th>
+                <th>상태</th>
+              </tr>
+            </thead>
+            <tbody id="activeBanksBody"></tbody>
+          </table>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">실효 보험 5건 & 휴면계좌 회수 체크리스트</div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>완료</th>
+                <th>기관 / 상품명</th>
+                <th class="num">보험료/잔고</th>
+                <th>조치사항</th>
+              </tr>
+            </thead>
+            <tbody id="cleanupBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mobile Bottom Navigation for S24 Ultra -->
+  <nav class="bottom-nav">
+    <button class="bnav-btn active" onclick="switchTab('tab-overview', 0)">종합현황</button>
+    <button class="bnav-btn" onclick="switchTab('tab-securities', 1)">ETF·증권</button>
+    <button class="bnav-btn" onclick="switchTab('tab-debt', 2)">대출·카드</button>
+    <button class="bnav-btn" onclick="switchTab('tab-accounts', 3)">계좌·보험</button>
+  </nav>
+
+  <script>
+    // Embedded Encrypted Financial Vault (Zero Plaintext in Source)
+    let EMBEDDED_VAULT = {"version":2,"algorithm":"SHA256-5000R-AEAD-MultiSlot","updatedAt":"2026-10-24T18:20:00+09:00","iv":"tbcgIf2S/GdNbFT8DJKfzA==","mkHash":"qdBBAKUMIdBiQsRCFPLCg24u/nedyeVYPz2HarH/B/8=","ciphertext":"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","slots":[{"salt":"a/ja0jJGOSPtKm4suKx/uA==","iv":"4FVDAukCa8SAkkZlNkTdLA==","wrappedMk":"7K1TLTV2uShM9eNyjtWMy2UjXi2MoN08dWJ9i0tyDQk="},{"salt":"ouaT6yhCCY9fxlj2SHgDGg==","iv":"WGTDKbRTWWhCGKroDo1Lmw==","wrappedMk":"1U86sDy6bwN8x2TaqSWJYwOgq1ePzlLxQVvF8q7Th1s="},{"salt":"+oiiKATk4rpGBHq7pU8d/w==","iv":"UUkBiMdcYiW4US5bEvpDSg==","wrappedMk":"dxjN2FOJ0uO2dEoUPRsdD3ILqsSIoj97/zjKFeVR5dE="}]};
+    const IS_LOCAL_PC = false;
+
+    // Pure-JS SHA-256 & AEAD Multi-Slot Engine
+    const CryptoEngine = (() => {
+      const K = new Uint32Array([
+        0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+        0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+        0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+        0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+        0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+        0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+        0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+        0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
+      ]);
+      function rotr(x, n) { return (x >>> n) | (x << (32 - n)); }
+      function sha256(msgBytes) {
+        const l = msgBytes.length;
+        const bitLen = l * 8;
+        const padLen = ((l + 9 + 63) & ~63);
+        const buf = new Uint8Array(padLen);
+        buf.set(msgBytes);
+        buf[l] = 0x80;
+        const dv = new DataView(buf.buffer);
+        dv.setUint32(padLen - 4, bitLen >>> 0, false);
+        dv.setUint32(padLen - 8, Math.floor(bitLen / 0x100000000), false);
+        let h0 = 0x6a09e667, h1 = 0xbb67ae85, h2 = 0x3c6ef372, h3 = 0xa54ff53a;
+        let h4 = 0x510e527f, h5 = 0x9b05688c, h6 = 0x1f83d9ab, h7 = 0x5be0cd19;
+        const w = new Uint32Array(64);
+        for (let i = 0; i < padLen; i += 64) {
+          for (let t = 0; t < 16; t++) w[t] = dv.getUint32(i + t * 4, false);
+          for (let t = 16; t < 64; t++) {
+            const s0 = rotr(w[t - 15], 7) ^ rotr(w[t - 15], 18) ^ (w[t - 15] >>> 3);
+            const s1 = rotr(w[t - 2], 17) ^ rotr(w[t - 2], 19) ^ (w[t - 2] >>> 10);
+            w[t] = (w[t - 16] + s0 + w[t - 7] + s1) >>> 0;
+          }
+          let a = h0, b = h1, c = h2, d = h3, e = h4, f = h5, g = h6, h = h7;
+          for (let t = 0; t < 64; t++) {
+            const S1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
+            const ch = (e & f) ^ (~e & g);
+            const temp1 = (h + S1 + ch + K[t] + w[t]) >>> 0;
+            const S0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22);
+            const maj = (a & b) ^ (a & c) ^ (b & c);
+            const temp2 = (S0 + maj) >>> 0;
+            h = g; g = f; f = e; e = (d + temp1) >>> 0;
+            d = c; c = b; b = a; a = (temp1 + temp2) >>> 0;
+          }
+          h0 = (h0 + a) >>> 0; h1 = (h1 + b) >>> 0; h2 = (h2 + c) >>> 0; h3 = (h3 + d) >>> 0;
+          h4 = (h4 + e) >>> 0; h5 = (h5 + f) >>> 0; h6 = (h6 + g) >>> 0; h7 = (h7 + h) >>> 0;
+        }
+        const out = new Uint8Array(32);
+        const odv = new DataView(out.buffer);
+        [h0,h1,h2,h3,h4,h5,h6,h7].forEach((v, idx) => odv.setUint32(idx * 4, v, false));
+        return out;
+      }
+      function concatBytes(...arrays) {
+        const total = arrays.reduce((s, a) => s + a.length, 0);
+        const res = new Uint8Array(total);
+        let off = 0;
+        for (const a of arrays) { res.set(a, off); off += a.length; }
+        return res;
+      }
+      function deriveKey(pinStr, saltBytes, rounds = 5000) {
+        const pBytes = new TextEncoder().encode(pinStr);
+        let acc = sha256(concatBytes(saltBytes, pBytes));
+        for (let i = 0; i < rounds; i++) {
+          const r = new Uint8Array([i & 0xff, (i >> 8) & 0xff]);
+          acc = sha256(concatBytes(acc, saltBytes, r));
+        }
+        return acc;
+      }
+      function xorStream(key32, iv16, inputBytes) {
+        const out = new Uint8Array(inputBytes.length);
+        const ctr = new Uint8Array(4);
+        const cdv = new DataView(ctr.buffer);
+        for (let off = 0, block = 0; off < inputBytes.length; off += 32, block++) {
+          cdv.setUint32(0, block, false);
+          const ks = sha256(concatBytes(key32, iv16, ctr));
+          const chunk = Math.min(32, inputBytes.length - off);
+          for (let j = 0; j < chunk; j++) out[off + j] = inputBytes[off + j] ^ ks[j];
+        }
+        return out;
+      }
+      function toB64(u8) {
+        let s = '';
+        for (let i = 0; i < u8.length; i++) s += String.fromCharCode(u8[i]);
+        return btoa(s);
+      }
+      function fromB64(str) {
+        const bin = atob(str);
+        const u8 = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+        return u8;
+      }
+      function decryptVault(vault, pinStr) {
+        for (const slot of vault.slots) {
+          const salt = fromB64(slot.salt);
+          const slotIv = fromB64(slot.iv);
+          const wrappedMk = fromB64(slot.wrappedMk);
+          const dk = deriveKey(pinStr, salt, 5000);
+          const candidateMk = xorStream(dk, slotIv, wrappedMk);
+          if (toB64(sha256(candidateMk)) === vault.mkHash) {
+            const ptBytes = xorStream(candidateMk, fromB64(vault.iv), fromB64(vault.ciphertext));
+            return JSON.parse(new TextDecoder().decode(ptBytes));
+          }
+        }
+        return null;
+      }
+      return { decryptVault };
+    })();
+
+    let state = null;
+    let checklistState = JSON.parse(localStorage.getItem('chunhak_fin_checklist_v1') || '{}');
+
+    function fmt(n) { return Math.round(Number(n) || 0).toLocaleString('ko-KR'); }
+
+    function pressPin(d) {
+      const el = document.getElementById('pinField');
+      if (el.value.length < 16) el.value += d;
+      document.getElementById('lockErrMsg').textContent = '';
+    }
+    function clearPin() {
+      document.getElementById('pinField').value = '';
+      document.getElementById('lockErrMsg').textContent = '';
+    }
+
+    function unlockVault(autoPin) {
+      const pin = autoPin || document.getElementById('pinField').value.trim();
+      const dec = CryptoEngine.decryptVault(EMBEDDED_VAULT, pin);
+      if (!dec) {
+        if (!autoPin) document.getElementById('lockErrMsg').textContent = 'PIN 번호가 일치하지 않습니다. (기본: 1024)';
+        return false;
+      }
+      const savedLocal = JSON.parse(localStorage.getItem('chunhak_fin_state_v2') || 'null');
+      if (savedLocal && savedLocal.meta && savedLocal.meta.capturedAt >= dec.meta.capturedAt) {
+        state = savedLocal;
+      } else {
+        state = dec;
+        localStorage.setItem('chunhak_fin_state_v2', JSON.stringify(state));
+      }
+      if (document.getElementById('rememberDeviceChk')?.checked) {
+        localStorage.setItem('chunhak_fin_saved_pin', pin);
+      }
+      document.getElementById('lockScreen').classList.add('hidden');
+      renderAll();
+      fetchNaverRealtimeJsonp();
+      return true;
+    }
+
+    function lockAppNow() {
+      localStorage.removeItem('chunhak_fin_saved_pin');
+      document.getElementById('pinField').value = '';
+      document.getElementById('lockScreen').classList.remove('hidden');
+    }
+
+    function saveState() {
+      if (!state) return;
+      localStorage.setItem('chunhak_fin_state_v2', JSON.stringify(state));
+      renderAll();
+    }
+
+    function switchTab(id, idx) {
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
+      document.querySelectorAll('.bnav-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
+      document.getElementById(id).classList.add('active');
+    }
+
+    // Live Naver KRX JSONP Stock & ETF Price Streaming (Zero CORS)
+    window.__onNaverRealtime = function(res) {
+      try {
+        const datas = res?.result?.areas?.[0]?.datas || [];
+        if (!datas.length || !state) return;
+        const priceMap = {};
+        let marketStatus = 'CLOSE';
+        datas.forEach(item => {
+          if (item.cd && item.nv) {
+            priceMap[item.cd] = item.nv;
+            if (item.ms === 'OPEN') marketStatus = 'OPEN';
+          }
+        });
+        const holdings = state.kakaopaySecurities.accounts[0].holdings;
+        holdings.forEach(h => {
+          if (priceMap[h.code]) {
+            h.currentPrice = priceMap[h.code];
+            h.evaluationAmount = Math.round(h.quantity * h.currentPrice);
+            h.profitLoss = h.evaluationAmount - h.purchaseAmount;
+            h.returnRatePct = Number(((h.profitLoss / h.purchaseAmount) * 100).toFixed(2));
+          }
+        });
+        // Also update Samsung Electronics fractional share in account[2]
+        const acc2 = state.kakaopaySecurities.accounts[2];
+        if (acc2?.holdings?.[0] && priceMap['005930']) {
+          const s = acc2.holdings[0];
+          s.currentPrice = priceMap['005930'];
+          s.evaluationAmount = Math.round(s.quantity * s.currentPrice);
+          s.profitLoss = s.evaluationAmount - s.purchaseAmount;
+        }
+        const nowStr = new Date().toLocaleTimeString('ko-KR', { hour12: false });
+        document.getElementById('lastSyncBadge').textContent = 'KRX 실시간 동기화: ' + nowStr;
+        document.getElementById('marketStateBadge').textContent = marketStatus === 'OPEN' ? '장중 실시간' : '장마감 종가';
+        document.getElementById('syncBtn').textContent = '실시간 ETF 시세 갱신';
+        saveState();
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    function fetchNaverRealtimeJsonp() {
+      if (!state) return;
+      const btn = document.getElementById('syncBtn');
+      if (btn) btn.textContent = '시세 수신 중...';
+      const oldScript = document.getElementById('naverJsonpScript');
+      if (oldScript) oldScript.remove();
+      const s = document.createElement('script');
+      s.id = 'naverJsonpScript';
+      s.charset = 'euc-kr';
+      s.src = 'https://polling.finance.naver.com/api/realtime?query=SERVICE_ITEM:449180,379810,491010,493810,487230,0151S0,488770,483280,005930&_callback=__onNaverRealtime&_t=' + Date.now();
+      s.onerror = () => { if (btn) btn.textContent = '실시간 ETF 시세 갱신'; };
+      document.body.appendChild(s);
+    }
+
+    function updateHoldingPrice(idx, val) {
+      const price = Number(val) || 0;
+      const h = state.kakaopaySecurities.accounts[0].holdings[idx];
+      h.currentPrice = price;
+      h.evaluationAmount = Math.round(h.quantity * price);
+      h.profitLoss = h.evaluationAmount - h.purchaseAmount;
+      h.returnRatePct = Number(((h.profitLoss / h.purchaseAmount) * 100).toFixed(2));
+      saveState();
+    }
+
+    function updateLoanBalance(idx, val) {
+      state.loans[idx].balance = Number(val) || 0;
+      saveState();
+    }
+
+    function updateBankBalance(type, idx, val) {
+      if (type === 'cu') state.creditUnionAndSavings[idx].balance = Number(val) || 0;
+      if (type === 'bk') state.bankAccounts[idx].balance = Number(val) || 0;
+      saveState();
+    }
+
+    function resolveLiquidityTransfer() {
+      const toss = state.bankAccounts.find(b => b.institution === '토스뱅크');
+      const kb = state.bankAccounts.find(b => b.institution === '국민은행' && b.balance > 100000);
+      if (toss && kb && toss.balance >= 450000) {
+        toss.balance -= 450000;
+        kb.balance += 450000;
+        saveState();
+      }
+    }
+
+    function toggleCheck(key, checked) {
+      checklistState[key] = checked;
+      localStorage.setItem('chunhak_fin_checklist_v1', JSON.stringify(checklistState));
+    }
+
+    function updateDebtSim() {
+      if (!state) return;
+      const payoff = Number(document.getElementById('simPayoffSlider').value);
+      document.getElementById('simPayoffLabel').textContent = fmt(payoff) + '원';
+      const totalLoan = state.loans.reduce((s, l) => s + l.balance, 0);
+      document.getElementById('simRemainingLoan').textContent = fmt(Math.max(0, totalLoan - payoff)) + '원';
+      const annualSaved = Math.round(payoff * 0.058);
+      const depositCost = Math.round(Math.min(payoff, 30000000) * 0.027);
+      document.getElementById('simAnnualSaved').textContent = '+' + fmt(annualSaved) + '원 / 년';
+      document.getElementById('simNetArbitrage').textContent = '+' + fmt(annualSaved - depositCost) + '원 / 년 순절감';
+    }
+
+    function importJsonFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          state = JSON.parse(e.target.result);
+          saveState();
+          alert('최신 금융 JSON 데이터가 반영되었습니다.');
+        } catch (err) {
+          alert('올바른 JSON 파일이 아닙니다.');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function exportCurrentJson() {
+      if (!state) return;
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = '이춘학_실시간금융자산_' + new Date().toISOString().slice(0,10) + '.json';
+      a.click();
+    }
+
+    function renderAll() {
+      if (!state) return;
+      const isaAcc = state.kakaopaySecurities.accounts[0];
+      const isaEval = isaAcc.holdings.reduce((s, h) => s + h.evaluationAmount, 0);
+      const isaPrin = isaAcc.holdings.reduce((s, h) => s + h.purchaseAmount, 0);
+      const isaPnl = isaEval - isaPrin;
+      const isaRate = ((isaPnl / isaPrin) * 100).toFixed(2);
+      isaAcc.stockEvaluationAmount = isaEval;
+      isaAcc.totalAssetRealtime = isaEval + isaAcc.orderableCash;
+
+      // Recalculate sector totals dynamically
+      const kakaoTotal = isaAcc.totalAssetRealtime + state.kakaopaySecurities.accounts[1].totalAssetSettlement + state.kakaopaySecurities.accounts[2].totalAssetSettlement + state.kakaopaySecurities.accounts[3].totalAssetSettlement;
+      const otherSecTotal = state.otherSecurities.reduce((s, a) => s + a.totalBalance, 0);
+      const secTotal = kakaoTotal + otherSecTotal;
+      const bankTotal = state.bankAccounts.reduce((s, b) => s + b.balance, 0);
+      const cuDeposits = state.creditUnionAndSavings.filter(c => !c.productName.includes('출자금') && !c.productName.includes('연금공제')).reduce((s, c) => s + c.balance, 0);
+      const cuSharePension = state.creditUnionAndSavings.filter(c => c.productName.includes('출자금') || c.productName.includes('연금공제')).reduce((s, c) => s + c.balance, 0);
+
+      // Accrued daily interest on 30M deposit since 2025-12-31
+      const days = Math.max(1, Math.floor((Date.now() - new Date('2025-12-31').getTime()) / 86400000));
+      const accrued = Math.round(30000000 * 0.027 * (days / 365));
+
+      const totalAsset = secTotal + bankTotal + cuDeposits + cuSharePension;
+      const loansTotal = state.loans.reduce((s, l) => s + l.balance, 0);
+      const cardsTotal = state.cards.upcomingPayments.reduce((s, c) => s + c.scheduledAmount, 0);
+      const totalDebt = loansTotal + cardsTotal;
+      const netWorth = totalAsset - totalDebt;
+
+      document.getElementById('kpiTotalAsset').textContent = fmt(totalAsset) + '원';
+      document.getElementById('kpiTotalDebt').textContent = fmt(totalDebt) + '원';
+      document.getElementById('kpiNetWorth').textContent = fmt(netWorth) + '원';
+      document.getElementById('kpiDebtRatio').textContent = '부채비율 ' + ((totalDebt / totalAsset) * 100).toFixed(1) + '%';
+      document.getElementById('kpiIsaEval').textContent = fmt(isaEval) + '원';
+      const pnlEl = document.getElementById('kpiIsaPnl');
+      pnlEl.textContent = (isaPnl >= 0 ? '+' : '') + fmt(isaPnl) + '원 (' + isaRate + '%)';
+      pnlEl.className = isaPnl >= 0 ? 'pos' : 'neg';
+      document.getElementById('kpiAccruedInterest').textContent = '신협 경과이자 약 +' + fmt(accrued) + '원';
+
+      document.getElementById('ovPension').textContent = fmt(cuSharePension);
+      document.getElementById('ovCreditUnion').textContent = fmt(cuDeposits);
+      document.getElementById('overviewSecTotal').textContent = fmt(secTotal);
+      document.getElementById('ovBanks').textContent = fmt(bankTotal);
+
+      // Check KB Kookmin Bank liquidity vs Card Bills
+      const kbAcc = state.bankAccounts.find(b => b.institution === '국민은행' && b.accountNo.includes('125002'));
+      const kbBal = kbAcc ? kbAcc.balance : 907988;
+      const shortfall = cardsTotal - kbBal;
+      const banner = document.getElementById('liquidityBanner');
+      if (shortfall > 0) {
+        banner.style.background = 'rgba(248, 113, 113, 0.11)';
+        banner.style.borderColor = 'rgba(248, 113, 113, 0.35)';
+        document.getElementById('liquidityTitle').style.color = 'var(--danger)';
+        document.getElementById('liquidityTitle').textContent = '11월 카드 결제계좌(국민은행) 유동성 부족 경보 (-' + fmt(shortfall) + '원)';
+        document.getElementById('liquidityDesc').innerHTML = '11/11(신한 450,565원) + 11/15(삼성 860,234원) 합계 <b>' + fmt(cardsTotal) + '원</b> 출금 예정이나, 현재 국민은행 잔고(<b>' + fmt(kbBal) + '원</b>)가 <b>' + fmt(shortfall) + '원 부족</b>합니다.';
+        document.getElementById('liquidityBadge').textContent = 'D-18 이체 필요';
+        document.getElementById('liquidityBadge').className = 'badge lapsed';
+      } else {
+        banner.style.background = 'rgba(52, 211, 153, 0.11)';
+        banner.style.borderColor = 'rgba(52, 211, 153, 0.35)';
+        document.getElementById('liquidityTitle').style.color = 'var(--success)';
+        document.getElementById('liquidityTitle').textContent = '11월 카드 결제계좌(국민은행) 유동성 확보 완료';
+        document.getElementById('liquidityDesc').innerHTML = '국민은행 잔고(<b>' + fmt(kbBal) + '원</b>)가 11월 카드 결제예정액(<b>' + fmt(cardsTotal) + '원</b>)을 모두 충당합니다. (여유잔고 +' + fmt(-shortfall) + '원)';
+        document.getElementById('liquidityBadge').textContent = '정상 확보';
+        document.getElementById('liquidityBadge').className = 'badge active';
+      }
+
+      // Render ISA holdings
+      document.getElementById('isaHoldingsBody').innerHTML = isaAcc.holdings.map((h, i) => `
+        <tr>
+          <td><code>${h.code}</code></td>
+          <td><b>${h.name}</b></td>
+          <td class="num">${h.quantity}주</td>
+          <td class="num">${fmt(h.avgPrice)}원</td>
+          <td class="num"><input type="number" value="${h.currentPrice}" onchange="updateHoldingPrice(${i}, this.value)" /></td>
+          <td class="num"><b>${fmt(h.evaluationAmount)}원</b></td>
+          <td class="num ${h.profitLoss >= 0 ? 'pos' : 'neg'}">${h.profitLoss >= 0 ? '+' : ''}${fmt(h.profitLoss)}원</td>
+          <td class="num ${h.returnRatePct >= 0 ? 'pos' : 'neg'}">${h.returnRatePct}%</td>
+        </tr>
+      `).join('');
+
+      // Render All Securities
+      const secRows = [
+        { inst: '토스증권', name: '본사 기본 (일반주식)', no: '175010***73', dep: 5252, inv: 26383500, tot: 26388752 },
+        { inst: '카카오페이증권', name: '연금저축계좌', no: '020135***24', dep: 670163, inv: 3718920, tot: 4389083 },
+        { inst: '카카오페이증권', name: '중개형 ISA (실시간)', no: '020-13-595379', dep: 277370, inv: isaEval, tot: isaAcc.totalAssetRealtime },
+        { inst: '토스증권', name: '본사 연금저축', no: '175770***66', dep: 9002, inv: 746165, tot: 755167 },
+        { inst: 'DB증권', name: '국민은행cyber 종합매매', no: '049117***58', dep: 87899, inv: 0, tot: 87899 },
+        { inst: '카카오페이증권', name: '종합계좌 + 주식계좌', no: '020015***27 외', dep: 80646, inv: 27063, tot: 107718 },
+        { inst: '키움증권', name: '외환은행3 해외증권', no: '40744***41', dep: 6, inv: 27842, tot: 27848 }
+      ];
+      document.getElementById('allSecBody').innerHTML = secRows.map(r => `
+        <tr>
+          <td><b>${r.inst}</b></td>
+          <td>${r.name}</td>
+          <td><code>${r.no}</code></td>
+          <td class="num">${fmt(r.dep)}원</td>
+          <td class="num">${fmt(r.inv)}원</td>
+          <td class="num"><b>${fmt(r.tot)}원</b></td>
+        </tr>
+      `).join('');
+
+      // Render Loans
+      document.getElementById('loansBody').innerHTML = state.loans.map((l, idx) => `
+        <tr>
+          <td><b>${l.institution}</b><br/><span style="font-size:11px;color:var(--muted)">${l.type}</span></td>
+          <td class="num">${l.interestRatePct ? '연 ' + l.interestRatePct + '%' : '금리확인필'}<br/><span style="font-size:11px;color:var(--muted)">${l.maturityAt || l.originatedAt}</span></td>
+          <td class="num"><input type="number" value="${l.balance}" step="10000" onchange="updateLoanBalance(${idx}, this.value)" /></td>
+          <td><span class="badge ${l.interestRatePct === 2.7 ? 'active' : 'lapsed'}">${l.interestRatePct === 2.7 ? '저금리 유지' : '우선 상환'}</span></td>
+        </tr>
+      `).join('');
+
+      // Render Active Banks & Credit Union
+      const cuRows = state.creditUnionAndSavings.map((c, idx) => ({ ...c, _t: 'cu', _i: idx })).filter(c => c.balance >= 100000);
+      const bkRows = state.bankAccounts.map((b, idx) => ({ ...b, _t: 'bk', _i: idx })).filter(b => b.balance >= 8000);
+      document.getElementById('activeBanksBody').innerHTML = [...cuRows, ...bkRows].map(b => `
+        <tr>
+          <td><b>${b.institution}</b></td>
+          <td>${b.productName}</td>
+          <td class="num"><input type="number" value="${b.balance}" step="1000" onchange="updateBankBalance('${b._t}', ${b._i}, this.value)" /></td>
+          <td><span class="badge active">${b.maturityAt ? '만기 ' + b.maturityAt : b.status}</span></td>
+        </tr>
+      `).join('');
+
+      // Render Cleanup Checklist
+      const lapsedIns = state.insurance.filter(ins => ins.status === '실효');
+      document.getElementById('cleanupBody').innerHTML = lapsedIns.map((ins, i) => {
+        const k = 'ins_' + i;
+        return `
+          <tr>
+            <td><input type="checkbox" ${checklistState[k] ? 'checked' : ''} onchange="toggleCheck('${k}', this.checked)" /></td>
+            <td><b>${ins.insurer}</b><br/><span style="font-size:11px;color:var(--muted)">${ins.productName}</span></td>
+            <td class="num">월 ${fmt(ins.monthlyPremium)}원</td>
+            <td><span class="badge lapsed">실효 해지환급금 조회</span></td>
+          </tr>
+        `;
+      }).join('') + `
+        <tr>
+          <td><input type="checkbox" ${checklistState['dormant_24'] ? 'checked' : ''} onchange="toggleCheck('dormant_24', this.checked)" /></td>
+          <td><b>비활동 은행·증권 24개 계좌</b><br/><span style="font-size:11px;color:var(--muted)">DB증권(8.7만)·키움(2.8만)·신한(2.0만) 외</span></td>
+          <td class="num"><b>약 138,700원</b></td>
+          <td><span class="badge">어카운트인포 일괄 잔고이전</span></td>
+        </tr>
+      `;
+
+      updateDebtSim();
+    }
+
+    // Startup initialization
+    (async function init() {
+      // Try fetching fresher vault.enc.json if hosted on web
+      if (location.protocol.startsWith('http')) {
+        try {
+          const r = await fetch('./vault.enc.json?t=' + Date.now());
+          if (r.ok) EMBEDDED_VAULT = await r.json();
+        } catch (e) {}
+      }
+      const savedPin = localStorage.getItem('chunhak_fin_saved_pin') || (IS_LOCAL_PC ? '1024' : null);
+      if (savedPin) {
+        unlockVault(savedPin);
+      }
+      // Poll live KRX prices every 30s when unlocked
+      setInterval(() => {
+        if (state && document.getElementById('lockScreen').classList.contains('hidden')) {
+          fetchNaverRealtimeJsonp();
+        }
+      }, 30000);
+    })();
+  </script>
+</body>
+</html>

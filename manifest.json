@@ -1,0 +1,10 @@
+{
+  "name": "이춘학 실시간 금융 컨트롤타워 (MyFin Live)",
+  "short_name": "춘학금융타워",
+  "description": "이춘학 전용 실시간 ETF·은행·신협·대출·카드·보험 통합 자산관리 앱",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0b1017",
+  "theme_color": "#0b1017",
+  "orientation": "portrait-primary"
+}
